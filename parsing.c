@@ -5,76 +5,60 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: lemarian <lemarian@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/09/12 13:35:02 by lemarian          #+#    #+#             */
-/*   Updated: 2024/09/13 16:49:09 by lemarian         ###   ########.fr       */
+/*   Created: 2024/09/28 14:54:26 by lemarian          #+#    #+#             */
+/*   Updated: 2024/10/08 12:40:24 by lemarian         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "so_long.h"
 
-char	**fill_map(char **map, t_node *list)
+char	*join_map(char *map, char *buffer, t_data *data)
 {
-	int	i;
-	int	size;
+	char	*join;
 
-	i = 0;
-	size = line_len(list->str);
-	while (list != NULL)
-	{
-		map[i] = malloc(sizeof(char) * size + 1);
-		map[i] = copy_line(list->str, map[i]);
-		i++;
-		list = list->next;
-	}
-	return (map);
+	join = ft_strjoin(map, buffer);
+	free(map);
+	free(buffer);
+	if (!join)
+		print_error("Failed to create map", data);
+	return (join);
 }
 
-char	**parse(int fd)
+void	get_map(int fd, t_data *data)
 {
-	t_node	*list;
-	char	*str;
-	char	**map;
-	int	rows;
+	char	*map;
+	char	*buffer;
 
-	rows = 0;
-	list = NULL;
-	str = get_next_line(fd);
-	while (str)
-	{
-		insert_tail(&list, str);
-		str = get_next_line(fd);
-	}
-	free(str);
-	rows = count_nodes(list);
-	map = malloc(sizeof(char *) * (rows + 1));
+	map = get_next_line(fd);
 	if (!map)
-		return (free_list(&list), NULL);
-	map[rows] = 0;
-	fill_map(map, list);
-	free_list(&list);
-	return (map);
+		print_error("Failed to read map", data);
+	buffer = get_next_line(fd);
+	while (buffer)
+	{
+		map = join_map(map, buffer, data);
+		buffer = get_next_line(fd);
+		data->height++;
+	}
+	data->map = ft_split(map, '\n');
+	free(map);
+	if (!data->map)
+		print_error("Failed to create map", data);
 }
 
-int	main(void)
+void	parse(int ac, char **av, t_data *data)
 {
 	int	fd;
-	char	**map;
-	int	i;
 
-	i = 0;
-	fd = open("map.ber", O_RDONLY);
-	map = parse(fd);
-	while (map[i])
-	{
-		ft_printf("%s\n", map[i]);
-		i++;
-	}
-	while (i >= 0)
-	{
-		free(map[i]);
-		i--;
-	}
-	free(map);//what's this one for
-	close(fd);
-	return (0);
+	if (ac != 2)
+		print_error("Wrong argument count", data);
+	if (!ft_strnstr(&av[1][ft_strlen(av[1]) - 4], ".ber", 4))
+		print_error("Need '.ber' file format", data);
+	if (ft_strlen(av[1]) < 5)
+		print_error("Need valid '.ber' file", data);
+	fd = open(av[1], O_RDONLY);
+	if (fd < 0)
+		print_error("Failed to open file", data);
+	get_map(fd, data);
+	if (close(fd) < 0)
+		print_error("Failed to close file", data);
 }
